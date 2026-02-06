@@ -17,3 +17,6 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+#  Ignore SQLite database files for metric storage if using PDO
+metrics.sqlite

@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  otel-collector-debug:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector-debug
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./docker/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "24317:4317" # OTLP gRPC receiver
+      - "24318:4318" # OTLP HTTP receiver
+      - "9888:8888" # Prometheus metrics exposed by the collector
+      - "9889:8889" # Prometheus exporter metrics
+      - "23133:13133" # health_check extension
+    networks:
+      - otel-debug
+    restart: unless-stopped
+
+networks:
+  otel-debug:
+    driver: bridge
