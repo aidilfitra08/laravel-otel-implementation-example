@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use App\Services\PrometheusMetrics;
 
 class MetricsController extends Controller
@@ -19,6 +20,9 @@ class MetricsController extends Controller
             'environment' => config('app.env', 'production'),
             'service' => config('opentelemetry.service_name', 'laravel-app'),
         ], 1);
+
+        // Add health check metrics
+        $this->addHealthMetrics();
 
         $metrics = PrometheusMetrics::render();
 
@@ -43,6 +47,48 @@ class MetricsController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Check database connectivity
+     */
+    private function checkDatabase(): int
+    {
+        try {
+            DB::connection()->getPdo();
+            return 1;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Add health check metrics for all services
+     */
+    private function addHealthMetrics(): void
+    {
+        $availableServices = ['database' /*, 'redis', 'rabbitmq', 's3' */];
+        try {
+            $healthData = [
+                'database' => $this->checkDatabase(),
+                // Add other health checks as needed:
+                // 'redis' => $this->checkRedis(),
+                // 'rabbitmq' => $this->checkRabbitMQ(),
+                // 's3' => $this->checkS3(),
+            ];
+
+            foreach ($healthData as $serviceName => $result) {
+                PrometheusMetrics::setGauge('health_check', [
+                    'service' => $serviceName,
+                ], $result);
+            }
+        } catch (\Exception $e) {
+            foreach ($availableServices as $serviceName) {
+                PrometheusMetrics::setGauge('health_check', [
+                    'service' => $serviceName,
+                ], 0);
+            }
         }
     }
 }
