@@ -54,7 +54,10 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single'],
+            'channels' => array_filter([
+                'single',
+                env('OTEL_LOGS_ENABLED', true) ? 'opentelemetry' : null,
+            ]),
             'ignore_exceptions' => false,
         ],
 
@@ -89,7 +92,7 @@ return [
             'handler_with' => [
                 'host' => env('PAPERTRAIL_URL'),
                 'port' => env('PAPERTRAIL_PORT'),
-                'connectionString' => 'tls://'.env('PAPERTRAIL_URL').':'.env('PAPERTRAIL_PORT'),
+                'connectionString' => 'tls://' . env('PAPERTRAIL_URL') . ':' . env('PAPERTRAIL_PORT'),
             ],
             'processors' => [PsrLogMessageProcessor::class],
         ],
@@ -125,6 +128,17 @@ return [
 
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
+        ],
+
+        'opentelemetry' => [
+            'driver' => 'monolog',
+            'handler' => App\Logging\OpenTelemetryLogHandler::class,
+            'level' => env('LOG_LEVEL', 'debug'),
+            'with' => [
+                'loggerName' => env('OTEL_LOGGER_NAME', env('OTEL_SERVICE_NAME', 'laravel-app')),
+                'serviceVersion' => env('OTEL_SERVICE_VERSION', '1.0.0'),
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
     ],
 
